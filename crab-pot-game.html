@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crab Pot Fishing</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600&display=swap');
+
+  :root {
+    --ocean-deep: #0a1628;
+    --ocean-mid: #0d2240;
+    --ocean-light: #1a4a6e;
+    --seafoam: #2ec4b6;
+    --sand: #e8d5a3;
+    --rust: #c0392b;
+    --orange: #e67e22;
+    --foam: #b8dfe8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--ocean-deep);
+    color: var(--sand);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated ocean background */
+  .ocean-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(180deg, #0a1628 0%, #0d2240 40%, #0e2f55 70%, #0b3a6e 100%);
+  }
+
+  .wave {
+    position: absolute;
+    width: 200%;
+    height: 80px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80'%3E%3Cpath fill='%231a4a6e' fill-opacity='0.4' d='M0,40 C360,80 720,0 1080,40 C1260,60 1380,30 1440,40 L1440,80 L0,80 Z'/%3E%3C/svg%3E") repeat-x;
+    animation: wave-move 8s linear infinite;
+  }
+
+  .wave:nth-child(2) {
+    opacity: 0.5;
+    animation-duration: 12s;
+    animation-direction: reverse;
+    top: 10px;
+  }
+
+  @keyframes wave-move {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  /* Bubbles */
+  .bubbles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(46, 196, 182, 0.15);
+    border: 1px solid rgba(46, 196, 182, 0.3);
+    animation: bubble-rise linear infinite;
+  }
+
+  @keyframes bubble-rise {
+    from { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.5; }
+    to { transform: translateY(-100px) scale(1); opacity: 0; }
+  }
+
+  /* Main layout */
+  .game-container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  header {
+    text-align: center;
+    padding: 20px 0 10px;
+  }
+
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    letter-spacing: 4px;
+    background: linear-gradient(180deg, #e8d5a3 0%, #2ec4b6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+
+  .subtitle {
+    color: var(--seafoam);
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 16px 0;
+  }
+
+  .stat-box {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(46, 196, 182, 0.3);
+    border-radius: 8px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 100px;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--seafoam);
+  }
+
+  .stat-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    color: var(--sand);
+    letter-spacing: 1px;
+    line-height: 1.1;
+  }
+
+  /* Ocean map */
+  .ocean-map {
+    background: rgba(10, 22, 40, 0.8);
+    border: 1px solid rgba(46, 196, 182, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .map-title {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--seafoam);
+    margin-bottom: 10px;
+  }
+
+  .map-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+
+  .spot {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.2s;
+    position: relative;
+    background: rgba(26, 74, 110, 0.4);
+    border-color: rgba(46, 196, 182, 0.15);
+  }
+
+  .spot:hover:not(.disabled) {
+    border-color: var(--seafoam);
+    background: rgba(46, 196, 182, 0.15);
+    transform: scale(1.05);
+  }
+
+  .spot.active {
+    border-color: var(--orange);
+    background: rgba(230, 126, 34, 0.15);
+    animation: pulse-pot 2s ease-in-out infinite;
+  }
+
+  .spot.has-pot {
+    border-color: var(--orange);
+  }
+
+  .spot.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .spot.locked {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(1);
+  }
+
+  .spot-name {
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--foam);
+    margin-top: 2px;
+    text-align: center;
+  }
+
+  .pot-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: var(--seafoam);
+    border-radius: 0 0 6px 6px;
+    transition: width 0.5s;
+  }
+
+  @keyframes pulse-pot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(230, 126, 34, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(230, 126, 34, 0); }
+  }
+
+  /* Actions panel */
+  .panel {
+    background: rgba(10, 22, 40, 0.8);
+    border: 1px solid rgba(46, 196, 182, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 12px 0;
+  }
+
+  .panel-title {
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--seafoam);
+    margin-bottom: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, var(--seafoam), #1a8a82);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    color: var(--ocean-deep);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(46, 196, 182, 0.4);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn.secondary {
+    background: linear-gradient(135deg, var(--orange), #c0392b);
+    color: white;
+  }
+
+  .btn.shop {
+    background: linear-gradient(135deg, #8e44ad, #6c3483);
+    color: white;
+  }
+
+  /* Inventory */
+  .inventory {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .inv-item {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .inv-item .count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.2rem;
+    color: var(--seafoam);
+  }
+
+  /* Log */
+  .log {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 10px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  .log-entry {
+    color: rgba(232, 213, 163, 0.7);
+    animation: fade-in 0.3s ease;
+  }
+
+  .log-entry.good { color: var(--seafoam); }
+  .log-entry.great { color: var(--orange); }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Shop */
+  .shop-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .shop-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .shop-item:hover {
+    border-color: var(--seafoam);
+    background: rgba(46, 196, 182, 0.08);
+  }
+
+  .shop-item .icon { font-size: 2rem; margin-bottom: 4px; }
+  .shop-item .name { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .shop-item .price { color: var(--sand); font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; margin-top: 4px; }
+  .shop-item .desc { font-size: 0.65rem; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  /* Haul animation */
+  .haul-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, #0d2240, #1a4a6e);
+    border: 2px solid var(--seafoam);
+    border-radius: 16px;
+    padding: 30px 40px;
+    text-align: center;
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .haul-popup.show {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .haul-popup h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.5rem;
+    color: var(--seafoam);
+    letter-spacing: 3px;
+  }
+
+  .haul-crabs {
+    font-size: 3rem;
+    margin: 10px 0;
+    letter-spacing: 4px;
+  }
+
+  .haul-count {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.5rem;
+    color: var(--sand);
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 99;
+    display: none;
+  }
+
+  .overlay.show { display: block; }
+
+  /* Section toggle */
+  .section-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .tab {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 6px;
+    color: var(--sand);
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+
+  .tab.active {
+    background: rgba(46, 196, 182, 0.2);
+    border-color: var(--seafoam);
+    color: var(--seafoam);
+  }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Crab sell button */
+  .sell-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  .crab-display {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 8px 14px;
+    flex: 1;
+  }
+
+  .crab-icon { font-size: 1.5rem; }
+  .crab-info { }
+  .crab-name { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--seafoam); }
+  .crab-count { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; }
+</style>
+</head>
+<body>
+
+<div class="ocean-bg">
+  <div class="wave"></div>
+  <div class="wave"></div>
+</div>
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="overlay" id="overlay" onclick="closeHaul()"></div>
+<div class="haul-popup" id="haulPopup">
+  <h2>🎣 POT HAULED!</h2>
+  <div class="haul-crabs" id="haulIcons"></div>
+  <div class="haul-count" id="haulCount"></div>
+  <button class="btn" style="margin-top:16px; width:auto; padding: 10px 30px;" onclick="closeHaul()">COLLECT</button>
+</div>
+
+<div class="game-container">
+  <header>
+    <h1>CRAB POT</h1>
+    <div class="subtitle">Dungeness Bay Fishing Co.</div>
+  </header>
+
+  <!-- Stats -->
+  <div class="stats-bar">
+    <div class="stat-box">
+      <div class="stat-label">💰 Dollars</div>
+      <div class="stat-value" id="statMoney">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">🦀 Caught</div>
+      <div class="stat-value" id="statTotal">0</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">🪣 Pots</div>
+      <div class="stat-value" id="statPots">1</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-label">🐟 Bait</div>
+      <div class="stat-value" id="statBait">3</div>
+    </div>
+  </div>
+
+  <!-- Ocean Map -->
+  <div class="ocean-map">
+    <div class="map-title">🗺 Fishing Grounds — Click a spot to deploy a pot</div>
+    <div class="map-grid" id="mapGrid"></div>
+  </div>
+
+  <!-- Main Panel -->
+  <div class="panel">
+    <div class="section-tabs">
+      <div class="tab active" onclick="switchTab('pots')">⚙️ Pots</div>
+      <div class="tab" onclick="switchTab('sell')">💵 Sell</div>
+      <div class="tab" onclick="switchTab('shop')">🏪 Shop</div>
+      <div class="tab" onclick="switchTab('log')">📋 Log</div>
+    </div>
+
+    <!-- Pots Section -->
+    <div class="section active" id="section-pots">
+      <div id="potsList"></div>
+    </div>
+
+    <!-- Sell Section -->
+    <div class="section" id="section-sell">
+      <div id="sellList"></div>
+      <button class="btn secondary" id="sellAllBtn" onclick="sellAll()" style="margin-top:8px;">💰 SELL ALL CRABS</button>
+    </div>
+
+    <!-- Shop Section -->
+    <div class="section" id="section-shop">
+      <div class="shop-grid" id="shopGrid"></div>
+    </div>
+
+    <!-- Log Section -->
+    <div class="section" id="section-log">
+      <div class="log" id="gameLog"><div class="log-entry">⚓ Welcome to Dungeness Bay. Deploy your pot to start fishing!</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== GAME STATE =====
+const state = {
+  money: 0,
+  bait: 3,
+  pots: 1,
+  totalCaught: 0,
+  activePots: [],     // { spotId, startTime, duration, baitQuality, progress }
+  inventory: {},      // crabType -> count
+  spots: [
+    { id: 0, name: 'Shallow Cove', emoji: '🌊', quality: 1, unlocked: true },
+    { id: 1, name: 'Rocky Point', emoji: '🪨', quality: 1.5, unlocked: true },
+    { id: 2, name: 'Kelp Bed', emoji: '🌿', quality: 2, unlocked: false, unlockCost: 50 },
+    { id: 3, name: 'Deep Channel', emoji: '💧', quality: 2.5, unlocked: false, unlockCost: 150 },
+    { id: 4, name: 'The Reef', emoji: '🐠', quality: 3, unlocked: false, unlockCost: 400 },
+    { id: 5, name: 'Harbor Mouth', emoji: '⚓', quality: 1.2, unlocked: true },
+    { id: 6, name: 'Tidal Pool', emoji: '🦑', quality: 1.8, unlocked: false, unlockCost: 80 },
+    { id: 7, name: 'Wreck Site', emoji: '🚢', quality: 3.5, unlocked: false, unlockCost: 600 },
+    { id: 8, name: 'Crab Grounds', emoji: '🦀', quality: 4, unlocked: false, unlockCost: 1000 },
+    { id: 9, name: 'Open Sea', emoji: '🌅', quality: 5, unlocked: false, unlockCost: 2000 },
+  ],
+  crabTypes: [
+    { id: 'dungeness', name: 'Dungeness', emoji: '🦀', value: 8, weight: 40 },
+    { id: 'blue', name: 'Blue Crab', emoji: '🫐', value: 6, weight: 30 },
+    { id: 'king', name: 'King Crab', emoji: '👑', value: 25, weight: 10 },
+    { id: 'snow', name: 'Snow Crab', emoji: '❄️', value: 15, weight: 15 },
+    { id: 'rock', name: 'Rock Crab', emoji: '🪨', value: 4, weight: 50 },
+  ],
+  baitTypes: [
+    { id: 'basic', name: 'Basic Bait', emoji: '🐟', speedMult: 1, catchMult: 1, cost: 5 },
+    { id: 'premium', name: 'Premium Bait', emoji: '🦐', speedMult: 1.5, catchMult: 1.5, cost: 15 },
+    { id: 'super', name: 'Super Bait', emoji: '🎣', speedMult: 2, catchMult: 2.5, cost: 35 },
+  ],
+  activeBaitType: 'basic',
+  shopItems: [
+    { id: 'bait_5', name: '5x Basic Bait', emoji: '🐟', cost: 20, action: () => { state.bait += 5; addLog('Bought 5 basic bait 🐟', 'good'); } },
+    { id: 'bait_premium', name: '3x Premium Bait', emoji: '🦐', cost: 40, action: () => { state.bait += 3; state.activeBaitType = 'premium'; addLog('Bought premium bait 🦐 — speed up!', 'good'); } },
+    { id: 'bait_super', name: '2x Super Bait', emoji: '🎣', cost: 60, action: () => { state.bait += 2; state.activeBaitType = 'super'; addLog('Bought super bait 🎣 — big haul incoming!', 'great'); } },
+    { id: 'extra_pot', name: 'Extra Pot', emoji: '🪣', cost: 75, action: () => { state.pots++; addLog(`New pot acquired! Now have ${state.pots} pots 🪣`, 'great'); } },
+    { id: 'big_pot', name: 'Upgrade: Big Pot', emoji: '📦', cost: 200, action: () => { state.potCapacityMult = (state.potCapacityMult || 1) + 0.5; addLog('Pot upgraded — holds more crabs! 📦', 'great'); } },
+    { id: 'fast_reel', name: 'Upgrade: Fast Reel', emoji: '⚡', cost: 150, action: () => { state.speedMult = (state.speedMult || 1) + 0.3; addLog('Reel upgraded — pots fill faster! ⚡', 'great'); } },
+  ],
+};
+
+// ===== INIT BUBBLES =====
+function initBubbles() {
+  const container = document.getElementById('bubbles');
+  for (let i = 0; i < 20; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 4 + Math.random() * 12;
+    b.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;
+      animation-duration:${8+Math.random()*15}s;animation-delay:${Math.random()*15}s;`;
+    container.appendChild(b);
+  }
+}
+
+// ===== MAP =====
+function renderMap() {
+  const grid = document.getElementById('mapGrid');
+  grid.innerHTML = '';
+  state.spots.forEach(spot => {
+    const activePot = state.activePots.find(p => p.spotId === spot.id);
+    const div = document.createElement('div');
+    div.className = 'spot';
+    if (!spot.unlocked) div.classList.add('locked');
+    else if (activePot) div.classList.add('has-pot');
+
+    if (!spot.unlocked) {
+      div.innerHTML = `<div style="font-size:1.2rem">🔒</div><div class="spot-name">\$${spot.unlockCost}</div>`;
+      div.onclick = () => buySpot(spot.id);
+    } else if (activePot) {
+      const pct = Math.min(100, ((Date.now() - activePot.startTime) / activePot.duration) * 100);
+      div.innerHTML = `<div style="font-size:1.5rem">🪣</div><div class="spot-name">${spot.name}</div>
+        <div class="pot-progress" style="width:${pct}%"></div>`;
+      div.onclick = () => haulPot(activePot);
+      if (pct >= 100) div.classList.add('active');
+    } else {
+      div.innerHTML = `<div style="font-size:1.5rem">${spot.emoji}</div><div class="spot-name">${spot.name}</div>`;
+      div.onclick = () => deployPot(spot.id);
+    }
+    grid.appendChild(div);
+  });
+}
+
+// ===== DEPLOY POT =====
+function deployPot(spotId) {
+  if (state.bait <= 0) { addLog('No bait! Buy some from the shop 🐟', ''); return; }
+  const usedPots = state.activePots.length;
+  if (usedPots >= state.pots) { addLog('All pots are deployed! Buy more in the shop 🪣', ''); return; }
+
+  const spot = state.spots.find(s => s.id === spotId);
+  const baitType = state.baitTypes.find(b => b.id === state.activeBaitType) || state.baitTypes[0];
+  const speedMult = (state.speedMult || 1) * baitType.speedMult;
+  const baseDuration = 15000 / speedMult / spot.quality; // seconds * 1000
+
+  state.bait--;
+  const pot = {
+    id: Date.now(),
+    spotId,
+    startTime: Date.now(),
+    duration: Math.max(5000, baseDuration),
+    baitType: state.activeBaitType,
+    quality: spot.quality,
+  };
+  state.activePots.push(pot);
+
+  // reset bait type to basic after use
+  if (state.activeBaitType !== 'basic') {
+    addLog(`Using ${baitType.emoji} ${baitType.name} at ${spot.name}!`, 'great');
+    state.activeBaitType = 'basic';
+  } else {
+    addLog(`Pot deployed at ${spot.emoji} ${spot.name} — check back soon!`, 'good');
+  }
+
+  updateStats();
+  renderMap();
+  renderPots();
+}
+
+// ===== HAUL POT =====
+function haulPot(pot) {
+  const elapsed = Date.now() - pot.startTime;
+  const pct = Math.min(1, elapsed / pot.duration);
+  if (pct < 0.2) { addLog('Too soon! Let the pot soak a bit longer ⏳', ''); return; }
+
+  const spot = state.spots.find(s => s.id === pot.spotId);
+  const baitType = state.baitTypes.find(b => b.id === pot.baitType) || state.baitTypes[0];
+  const potCap = Math.floor((1 + (state.potCapacityMult || 1) - 1) * 3 * spot.quality * pct * baitType.catchMult);
+  const count = Math.max(1, Math.round(potCap + Math.random() * 2));
+
+  const caught = {};
+  for (let i = 0; i < count; i++) {
+    const crab = rollCrab(spot.quality);
+    caught[crab.id] = (caught[crab.id] || 0) + 1;
+    state.inventory[crab.id] = (state.inventory[crab.id] || 0) + 1;
+    state.totalCaught++;
+  }
+
+  // Remove pot
+  state.activePots = state.activePots.filter(p => p.id !== pot.id);
+
+  // Show popup
+  const icons = Object.entries(caught).map(([id, n]) => {
+    const c = state.crabTypes.find(ct => ct.id === id);
+    return `${c.emoji}×${n}`;
+  }).join('  ');
+  document.getElementById('haulIcons').textContent = Object.entries(caught).map(([id]) => state.crabTypes.find(c => c.id === id).emoji).join(' ');
+  document.getElementById('haulCount').textContent = `${count} crab${count !== 1 ? 's' : ''} hauled! — ${icons}`;
+  document.getElementById('haulPopup').classList.add('show');
+  document.getElementById('overlay').classList.add('show');
+
+  addLog(`Hauled pot from ${spot.emoji} ${spot.name}: ${icons}`, 'great');
+  updateStats();
+  renderMap();
+  renderPots();
+  renderSell();
+}
+
+function closeHaul() {
+  document.getElementById('haulPopup').classList.remove('show');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function rollCrab(quality) {
+  const pool = state.crabTypes.map(c => {
+    let w = c.weight;
+    if (c.value > 10) w *= quality * 0.5; // better spots = more rare crabs
+    return { ...c, adjWeight: w };
+  });
+  const total = pool.reduce((s, c) => s + c.adjWeight, 0);
+  let r = Math.random() * total;
+  for (const c of pool) {
+    r -= c.adjWeight;
+    if (r <= 0) return c;
+  }
+  return pool[0];
+}
+
+// ===== SELL =====
+function renderSell() {
+  const list = document.getElementById('sellList');
+  const entries = Object.entries(state.inventory).filter(([_, n]) => n > 0);
+  if (!entries.length) {
+    list.innerHTML = '<div style="color:rgba(255,255,255,0.4);font-size:0.85rem;">No crabs in inventory. Go catch some!</div>';
+    return;
+  }
+  list.innerHTML = entries.map(([id, count]) => {
+    const c = state.crabTypes.find(ct => ct.id === id);
+    return `<div class="sell-row">
+      <div class="crab-display">
+        <div class="crab-icon">${c.emoji}</div>
+        <div class="crab-info">
+          <div class="crab-name">${c.name}</div>
+          <div class="crab-count">${count} × $${c.value}</div>
+        </div>
+      </div>
+      <button class="btn secondary" style="width:auto;padding:8px 16px;margin:0;" onclick="sellType('${id}')">SELL $${count*c.value}</button>
+    </div>`;
+  }).join('');
+}
+
+function sellType(id) {
+  const c = state.crabTypes.find(ct => ct.id === id);
+  const count = state.inventory[id] || 0;
+  if (!count) return;
+  const earned = count * c.value;
+  state.money += earned;
+  state.inventory[id] = 0;
+  addLog(`Sold ${count} ${c.name} for $${earned} 💰`, 'great');
+  updateStats();
+  renderSell();
+}
+
+function sellAll() {
+  let total = 0;
+  let sold = [];
+  for (const [id, count] of Object.entries(state.inventory)) {
+    if (count > 0) {
+      const c = state.crabTypes.find(ct => ct.id === id);
+      total += count * c.value;
+      sold.push(`${count} ${c.emoji}`);
+      state.inventory[id] = 0;
+    }
+  }
+  if (!total) return;
+  state.money += total;
+  addLog(`Sold all crabs (${sold.join(', ')}) for $${total}! 💰💰`, 'great');
+  updateStats();
+  renderSell();
+}
+
+// ===== SHOP =====
+function renderShop() {
+  const grid = document.getElementById('shopGrid');
+  const items = [
+    ...state.shopItems,
+    ...state.spots.filter(s => !s.unlocked).map(s => ({
+      id: `unlock_${s.id}`, name: `Unlock ${s.name}`, emoji: s.emoji, cost: s.unlockCost,
+      action: () => buySpot(s.id)
+    }))
+  ];
+  grid.innerHTML = items.map(item => `
+    <div class="shop-item" onclick="buyShopItem('${item.id}')">
+      <div class="icon">${item.emoji}</div>
+      <div class="name">${item.name}</div>
+      <div class="price">$${item.cost}</div>
+    </div>
+  `).join('');
+}
+
+function buyShopItem(id) {
+  const item = state.shopItems.find(i => i.id === id);
+  if (!item) {
+    // might be unlock
+    const m = id.match(/unlock_(\d+)/);
+    if (m) buySpot(parseInt(m[1]));
+    return;
+  }
+  if (state.money < item.cost) { addLog(`Need $${item.cost} to buy ${item.name}`, ''); return; }
+  state.money -= item.cost;
+  item.action();
+  updateStats();
+  renderShop();
+}
+
+function buySpot(spotId) {
+  const spot = state.spots.find(s => s.id === spotId);
+  if (spot.unlocked) return;
+  if (state.money < spot.unlockCost) { addLog(`Need $${spot.unlockCost} to unlock ${spot.name} 🔒`, ''); return; }
+  state.money -= spot.unlockCost;
+  spot.unlocked = true;
+  addLog(`Unlocked ${spot.emoji} ${spot.name}! New fishing ground available!`, 'great');
+  updateStats();
+  renderMap();
+  renderShop();
+}
+
+// ===== POTS LIST =====
+function renderPots() {
+  const list = document.getElementById('potsList');
+  if (!state.activePots.length) {
+    list.innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:0.85rem;margin-bottom:10px;">No active pots. Click a spot on the map to deploy one!</div>`;
+  } else {
+    list.innerHTML = state.activePots.map(pot => {
+      const spot = state.spots.find(s => s.id === pot.spotId);
+      const pct = Math.min(100, ((Date.now() - pot.startTime) / pot.duration) * 100);
+      const ready = pct >= 100;
+      return `<div style="background:rgba(255,255,255,0.04);border:1px solid ${ready ? 'var(--seafoam)' : 'rgba(255,255,255,0.1)'};
+        border-radius:8px;padding:10px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span>${spot.emoji} ${spot.name}</span>
+          <span style="font-size:0.75rem;color:var(--seafoam);">${ready ? '✅ READY' : Math.floor(pct) + '% full'}</span>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:4px;height:6px;margin-top:6px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${ready ? 'var(--seafoam)' : 'var(--ocean-light)'};transition:width 0.5s;border-radius:4px;"></div>
+        </div>
+        ${ready ? `<button class="btn" style="margin-top:8px;margin-bottom:0;" onclick="haulPot(state.activePots.find(p=>p.id==${pot.id}))">⬆️ HAUL POT</button>` : ''}
+      </div>`;
+    }).join('');
+  }
+  const available = state.pots - state.activePots.length;
+  list.innerHTML += `<div style="color:rgba(255,255,255,0.5);font-size:0.75rem;">${available} pot${available !== 1 ? 's' : ''} available to deploy · ${state.bait} bait remaining</div>`;
+}
+
+// ===== LOG =====
+function addLog(msg, type = '') {
+  const log = document.getElementById('gameLog');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry' + (type ? ` ${type}` : '');
+  entry.textContent = msg;
+  log.insertBefore(entry, log.firstChild);
+  if (log.children.length > 30) log.removeChild(log.lastChild);
+}
+
+// ===== STATS =====
+function updateStats() {
+  document.getElementById('statMoney').textContent = state.money;
+  document.getElementById('statTotal').textContent = state.totalCaught;
+  document.getElementById('statPots').textContent = state.pots;
+  document.getElementById('statBait').textContent = state.bait;
+}
+
+// ===== TABS =====
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['pots', 'sell', 'shop', 'log'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  if (name === 'shop') renderShop();
+  if (name === 'sell') renderSell();
+}
+
+// ===== GAME LOOP =====
+setInterval(() => {
+  renderMap();
+  renderPots();
+}, 500);
+
+// ===== START =====
+initBubbles();
+renderMap();
+renderPots();
+renderShop();
+renderSell();
+updateStats();
+</script>
+</body>
+</html>
